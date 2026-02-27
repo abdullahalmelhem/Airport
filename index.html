@@ -352,7 +352,7 @@
     #pdfRoot{
       position: absolute;
       top: 0;
-      right: 0; 
+      right: 0;
       width: 1100px;
       direction: rtl;
       font-family: 'Tajawal', Arial, sans-serif;
@@ -400,14 +400,14 @@
       font-size: 14px;
       white-space: nowrap;
     }
-    
+
     .pdfGrid{
       margin-top: 20px;
       display: flex;
       flex-direction: column;
       gap: 24px;
     }
-    
+
     .pdfCard{
       border: 2px solid #cbd5e1;
       border-radius: 14px;
@@ -467,7 +467,7 @@
       border-radius: 999px;
       font-weight: 900;
       font-size: 14px;
-      direction: rtl; 
+      direction: rtl;
     }
     .pdfNotes{
       white-space: pre-wrap;
@@ -497,8 +497,9 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <button id="exportWordBtn" class="btn btn-dark" onclick="exportDocxNative()">تصدير ومشاركة Word</button>
-          <button id="exportPdfBtn" class="btn btn-gold" onclick="exportPdfPro()">تنزيل PDF</button>
+          <!-- ✅ تم التعديل: كلاهما مشاركة وليس تنزيل -->
+          <button id="exportWordBtn" class="btn btn-dark" onclick="exportDocxNative()">مشاركة Word</button>
+          <button id="exportPdfBtn" class="btn btn-gold" onclick="exportPdfPro()">مشاركة PDF</button>
           <button class="btn btn-dark" onclick="resetForm()">تفريغ</button>
         </div>
       </div>
@@ -870,6 +871,28 @@
       return inputs.map(i => i.value.trim()).filter(Boolean);
     }
 
+    // ✅ مشاركة ملف (Word/PDF) + fallback بدون "تنزيل" افتراضي
+    async function shareFileSmart({ blob, fileName, mime, title, text }) {
+      const file = new File([blob], fileName, { type: mime });
+
+      // مشاركة أصلية (موبايل + بعض المتصفحات على اللابتوب)
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+        await navigator.share({ title, text, files: [file] });
+        return { mode: "shared" };
+      }
+
+      // fallback: فتح الملف في تبويب جديد (بدون زر تنزيل)
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+
+      // تنظيف بعد فترة
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+      // تنبيه لطيف للمستخدم
+      alert("ميزة المشاركة المباشرة غير مدعومة في هذا المتصفح. تم فتح الملف في تبويب جديد—يمكنك مشاركته/إرساله يدويًا (واتساب ويب/إيميل/تيليجرام).");
+      return { mode: "opened" };
+    }
+
     // دالة لاستخراج الأسماء المضافة بشكل جدول شاقولي/عمودي
     function getVerticalStaffRows(d) {
       const maxLen = Math.max(
@@ -1049,7 +1072,7 @@
       hidden.value = (val || "").trim();
       btnText.textContent = hidden.value ? hidden.value : "اختر نوع الطائرة...";
       renderAircraftList(document.getElementById('aircraft_search').value || "");
-      applyServiceVisibility(); 
+      applyServiceVisibility();
     }
 
     function renderAircraftList(filterText){
@@ -1224,10 +1247,21 @@
       `;
     }
 
+    function buildSafeBaseName(d){
+      let flightName = "";
+      if (d.flight_arr && d.flight_dep) flightName = `${d.flight_arr}_${d.flight_dep}`;
+      else if (d.flight_arr) flightName = d.flight_arr;
+      else if (d.flight_dep) flightName = d.flight_dep;
+      else flightName = `Ramp_Report_${new Date().toISOString().slice(0,10)}`;
+
+      return flightName.replace(/[\/\\:*?"<>|\s]/g, '-');
+    }
+
+    // ===== PDF Pro Export (Share) =====
     async function exportPdfPro(){
       const btn = document.getElementById('exportPdfBtn');
       const old = btn.innerText;
-      btn.innerText = "جاري إنشاء PDF...";
+      btn.innerText = "جاري تجهيز PDF للمشاركة...";
       btn.disabled = true;
 
       try{
@@ -1235,46 +1269,50 @@
         const pdfPage = document.getElementById('pdfPage');
         pdfPage.innerHTML = buildPdfTemplateHtml(d);
 
-        let flightName = "";
-        if (d.flight_arr && d.flight_dep) flightName = `${d.flight_arr}_${d.flight_dep}`;
-        else if (d.flight_arr) flightName = d.flight_arr;
-        else if (d.flight_dep) flightName = d.flight_dep;
-        else flightName = `Ramp_Report_${new Date().toISOString().slice(0,10)}`;
-
-        flightName = flightName.replace(/[\/\\:*?"<>|\s]/g, '-');
-        const fileName = `${flightName}.pdf`;
+        const baseName = buildSafeBaseName(d);
+        const fileName = `${baseName}.pdf`;
 
         const opt = {
-          margin: [10, 10, 10, 10], 
-          filename: fileName,
-          image: { type: 'jpeg', quality: 1.0 }, 
+          margin: [10, 10, 10, 10],
+          filename: fileName, // (لن نستخدم save، لكن نتركه)
+          image: { type: 'jpeg', quality: 1.0 },
           html2canvas: {
-            scale: 2, 
+            scale: 2,
             useCORS: true,
-            windowWidth: 1100, // منع القص بجعل العرض ثابت 
-            scrollY: 0, 
+            windowWidth: 1100,
+            scrollY: 0,
             x: 0
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-          pagebreak: { mode: ['css', 'legacy'] } 
+          pagebreak: { mode: ['css', 'legacy'] }
         };
 
-        // تم التعديل هنا: حفظ الملف مباشرة بدلاً من استخدام blob والمشاركة غير المدعومة في بعض الأجهزة.
-        await html2pdf().set(opt).from(pdfPage).save();
+        // ✅ بدل save(): نُنتج Blob ثم نشارك
+        const worker = html2pdf().set(opt).from(pdfPage).toPdf();
+        const pdf = await worker.get('pdf');
+        const pdfBlob = pdf.output('blob');
+
+        await shareFileSmart({
+          blob: pdfBlob,
+          fileName,
+          mime: "application/pdf",
+          title: "تقرير ساحة الطيران (PDF)",
+          text: "مرفق تقرير ساحة الطيران بصيغة PDF."
+        });
 
       }catch(e){
-        alert("حدث خطأ أثناء تصدير PDF: " + (e?.message || e));
+        alert("حدث خطأ أثناء تصدير/مشاركة PDF: " + (e?.message || e));
       }finally{
         btn.innerText = old;
         btn.disabled = false;
       }
     }
 
-    // ===== DOCX Native Export =====
+    // ===== DOCX Native Export (Share) =====
     async function exportDocxNative(){
       const btn = document.getElementById('exportWordBtn');
       const oldText = btn.innerText;
-      btn.innerText = "جاري التجهيز...";
+      btn.innerText = "جاري تجهيز Word للمشاركة...";
       btn.disabled = true;
 
       try {
@@ -1469,40 +1507,32 @@
             properties: {
               page: { size: { orientation: PageOrientation.LANDSCAPE }, margin: { top: 900, bottom: 900, left: 900, right: 900 } }
             },
-            children: [ 
-              headerTable, 
-              p(" ", {after: 120}), part1, 
-              p(" ", {after: 120}), staffTable, 
-              p(" ", {after: 120}), foundItemsTable, 
-              p(" ", {after: 120}), part3 
+            children: [
+              headerTable,
+              p(" ", {after: 120}), part1,
+              p(" ", {after: 120}), staffTable,
+              p(" ", {after: 120}), foundItemsTable,
+              p(" ", {after: 120}), part3
             ]
           }]
         });
 
         const blob = await Packer.toBlob(doc);
 
-        let flightName = "";
-        if (d.flight_arr && d.flight_dep) flightName = `${d.flight_arr}_${d.flight_dep}`;
-        else if (d.flight_arr) flightName = d.flight_arr;
-        else if (d.flight_dep) flightName = d.flight_dep;
-        else flightName = `Ramp_Report_${new Date().toISOString().slice(0,10)}`;
+        const baseName = buildSafeBaseName(d);
+        const fileName = `${baseName}.docx`;
 
-        flightName = flightName.replace(/[\/\\:*?"<>|\s]/g, '-');
-        const fileName = `${flightName}.docx`;
-        const fileForShare = new File([blob], fileName, { type: blob.type });
-
-        if (navigator.canShare && navigator.canShare({ files: [fileForShare] })) {
-          try {
-            await navigator.share({ title: 'تقرير ساحة الطيران', text: 'مرفق تقرير ساحة الطيران بصيغة Word.', files: [fileForShare] });
-          } catch (error) {
-            if (error.name !== 'AbortError') saveAs(blob, fileName);
-          }
-        } else {
-          saveAs(blob, fileName);
-        }
+        // ✅ مشاركة (بدون تنزيل افتراضي)
+        await shareFileSmart({
+          blob,
+          fileName,
+          mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          title: "تقرير ساحة الطيران (Word)",
+          text: "مرفق تقرير ساحة الطيران بصيغة Word."
+        });
 
       } catch (error) {
-        alert("حدث خطأ أثناء التصدير: " + error.message);
+        alert("حدث خطأ أثناء التصدير/المشاركة: " + (error?.message || error));
       } finally {
         btn.innerText = oldText;
         btn.disabled = false;
