@@ -485,7 +485,7 @@
 </head>
 
 <body class="p-4 sm:p-6">
-  <div class="mx-auto max-w-6xl card overflow-hidden">
+  <div class="mx-auto max-w-4xl card overflow-hidden">
     <div class="p-5 sm:p-6 glass no-print">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-3">
@@ -497,22 +497,20 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <button class="btn btn-soft" onclick="buildPreview()">إنشاء المعاينة</button>
           <button id="exportWordBtn" class="btn btn-dark" onclick="exportDocxNative()">تصدير ومشاركة Word</button>
-          <button id="exportPdfBtn" class="btn btn-gold" onclick="exportPdfPro()">تصدير ومشاركة PDF</button>
-          <button class="btn btn-gold" onclick="window.print()">طباعة / PDF</button>
+          <button id="exportPdfBtn" class="btn btn-gold" onclick="exportPdfPro()">تنزيل PDF</button>
           <button class="btn btn-dark" onclick="resetForm()">تفريغ</button>
         </div>
       </div>
     </div>
 
     <div class="p-4 sm:p-6">
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 gap-4">
         <div class="space-y-4">
           <div class="section p-4 sm:p-5">
             <div class="flex items-center justify-between gap-3 mb-3">
               <div class="text-[color:var(--gold)] font-extrabold">بيانات الرحلة</div>
-              <span class="mini">املأ البيانات ثم اضغط “إنشاء المعاينة”</span>
+              <span class="mini">املأ البيانات ثم قم بتصدير التقرير</span>
             </div>
             <div class="divider mb-4"></div>
 
@@ -825,20 +823,6 @@
             </div>
           </div>
         </div>
-
-        <div class="space-y-4">
-          <div class="section p-4 sm:p-5">
-            <div class="flex items-center justify-content-between mb-3">
-              <div class="text-[color:var(--gold)] font-extrabold">معاينة التقرير</div>
-              <div class="mini">المعاينة للشاشة والطباعة</div>
-            </div>
-            <div class="divider mb-4"></div>
-
-            <div id="previewBox" class="glass rounded-2xl p-4 border border-[color:var(--line)] min-h-[280px]">
-              <div class="text-center mini py-10">اضغط “إنشاء المعاينة” لعرض التقرير هنا</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -886,7 +870,7 @@
       return inputs.map(i => i.value.trim()).filter(Boolean);
     }
 
-    // دالة لاستخراج الأسماء المضافة بشكل جدول شاقولي/عمودي للمعاينة والـ PDF
+    // دالة لاستخراج الأسماء المضافة بشكل جدول شاقولي/عمودي
     function getVerticalStaffRows(d) {
       const maxLen = Math.max(
         d.movement_staff.length, d.loading_staff.length, d.food_staff.length,
@@ -1139,97 +1123,6 @@
       closeAircraftMenu();
     }
 
-    function buildPreview(){
-      const d = gatherData();
-      const box = document.getElementById('previewBox');
-      const createdStr = new Date().toLocaleString('ar');
-
-      const allChipsHtml = getCombinedChips(d).map(x => `<span class="chip">${escapeHtml(x)}</span>`).join("");
-        
-      const verticalRows = getVerticalStaffRows(d);
-      let staffHtml = `<div class="text-center mini py-2">لا توجد أسماء مضافة</div>`;
-      
-      if(verticalRows.length > 0) {
-         staffHtml = `
-            <div class="overflow-x-auto">
-              <table class="w-full text-center text-sm border-collapse border border-[color:var(--line)]">
-                <thead>
-                  <tr class="bg-black/20 text-[color:var(--gold)]">
-                    <th class="p-2 border border-[color:var(--line)]">موظف الحركة</th>
-                    <th class="p-2 border border-[color:var(--line)]">عمال التحميل</th>
-                    <th class="p-2 border border-[color:var(--line)]">ضيافة جوية</th>
-                    <th class="p-2 border border-[color:var(--line)]">عمال الصيانة</th>
-                    <th class="p-2 border border-[color:var(--line)]">عمال الكاترينغ</th>
-                    <th class="p-2 border border-[color:var(--line)]">عمال السادكوب</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${verticalRows.map(r => `
-                    <tr>
-                      <td class="p-2 border border-[color:var(--line)]">${escapeHtml(r.movement)}</td>
-                      <td class="p-2 border border-[color:var(--line)]">${escapeHtml(r.loading)}</td>
-                      <td class="p-2 border border-[color:var(--line)]">${escapeHtml(r.food)}</td>
-                      <td class="p-2 border border-[color:var(--line)]">${escapeHtml(r.maintenance)}</td>
-                      <td class="p-2 border border-[color:var(--line)]">${escapeHtml(r.catering)}</td>
-                      <td class="p-2 border border-[color:var(--line)]">${escapeHtml(r.sadkoub)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-         `;
-      }
-
-      box.innerHTML = `
-        <div class="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div class="text-[color:var(--gold)] font-extrabold text-lg">تقرير ساحة الطيران - خدمة الطائرة</div>
-            <div class="mini mt-1">تاريخ الإنشاء: ${escapeHtml(createdStr)}</div>
-          </div>
-          <div class="text-right">
-            <div class="mini">كاتب التقرير</div>
-            <div class="font-extrabold text-base">${escapeHtml(d.rep_writer || "—")}</div>
-          </div>
-        </div>
-        <div class="divider my-4"></div>
-        <div class="grid grid-cols-1 gap-3">
-          <div class="glass rounded-2xl p-4 border border-[color:var(--line)]">
-            <div class="text-[color:var(--gold)] font-extrabold mb-2">بيانات الرحلة</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              <div><span class="text-[color:var(--gold)] font-bold">نوع الطائرة:</span> ${escapeHtml(d.aircraft_type || "—")}</div>
-              <div><span class="text-[color:var(--gold)] font-bold">عدد الركاب:</span> <b class="text-[color:var(--gold)]">${escapeHtml(d.pax_count)}</b></div>
-              <div><span class="text-[color:var(--gold)] font-bold">وفود:</span> ${escapeHtml(d.delegations_count)}</div>
-              <div><span class="text-[color:var(--gold)] font-bold">ركاب VIP:</span> ${escapeHtml(d.vip_pax)}</div>
-              <div><span class="text-[color:var(--gold)] font-bold">توقيت الوصول:</span> ${escapeHtml(d.arr_date||"—")} / ${escapeHtml(d.arr_time||"—")}</div>
-              <div><span class="text-[color:var(--gold)] font-bold">توقيت المغادرة:</span> ${escapeHtml(d.dep_date||"—")} / ${escapeHtml(d.dep_time||"—")}</div>
-              <div><span class="text-[color:var(--gold)] font-bold">مهبط الطائرة:</span> فنكر ${escapeHtml(d.stand_num||"—")} — بوابة ${escapeHtml(d.gate_num||"—")}</div>
-              <div><span class="text-[color:var(--gold)] font-bold">رقم الرحلة:</span> قدوم ${escapeHtml(d.flight_arr||"—")} — مغادرة ${escapeHtml(d.flight_dep||"—")}</div>
-            </div>
-          </div>
-          <div class="glass rounded-2xl p-4 border border-[color:var(--line)]">
-            <div class="text-[color:var(--gold)] font-extrabold mb-3">الطواقم الموظفين</div>
-            ${staffHtml}
-            <div class="divider my-4"></div>
-            <div class="mt-3 text-sm">
-              <div class="text-[color:var(--gold)] font-bold mb-1">المفقودات التي وُجدت</div>
-              <div class="mini" style="white-space:pre-wrap">${escapeHtml(d.found_items || "—")}</div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-sm">
-              <div><span class="text-[color:var(--gold)] font-bold">اسم المستلم:</span> ${escapeHtml(d.receiver_name || "—")}</div>
-            </div>
-          </div>
-          <div class="glass rounded-2xl p-4 border border-[color:var(--line)]">
-            <div class="text-[color:var(--gold)] font-extrabold mb-2">آليات الخدمة والإنارة</div>
-            <div class="flex flex-wrap gap-2">${allChipsHtml}</div>
-            <div class="mt-4 text-sm">
-              <div class="text-[color:var(--gold)] font-bold mb-1">ملاحظات</div>
-              <div class="mini" style="white-space:pre-wrap">${escapeHtml(d.notes || "—")}</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
     function safeText(x){ return (x && x.toString().trim()) ? x.toString().trim() : "—"; }
 
     function buildPdfTemplateHtml(d){
@@ -1301,16 +1194,16 @@
                 </table>
 
                 <div style="margin-top:20px;">
+                  <div style="margin-bottom:14px;">
+                    <div style="font-weight:900; color:#0f172a; font-size:14px; margin-bottom:6px;">المفقودات التي وُجدت على الطائرة</div>
+                    <div class="pdfNotes">${escapeHtml(safeText(d.found_items))}</div>
+                  </div>
                   <table class="pdfTable">
                     <tr>
                       <td class="k" style="width:20%;">اسم المستلم</td>
                       <td class="v" style="width:80%;">${escapeHtml(safeText(d.receiver_name))}</td>
                     </tr>
                   </table>
-                  <div style="margin-top:14px;">
-                    <div style="font-weight:900; color:#0f172a; font-size:14px; margin-bottom:6px;">المفقودات التي وُجدت على الطائرة:</div>
-                    <div class="pdfNotes">${escapeHtml(safeText(d.found_items))}</div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1320,7 +1213,7 @@
               <div class="pdfCardBody">
                 <div class="pdfChips">${allChipsHtml}</div>
                 <div style="margin-top:14px;">
-                  <div style="font-weight:900; color:#0f172a; font-size:14px; margin-bottom:6px;">ملاحظات:</div>
+                  <div style="font-weight:900; color:#0f172a; font-size:14px; margin-bottom:6px;">ملاحظات</div>
                   <div class="pdfNotes">${escapeHtml(safeText(d.notes))}</div>
                 </div>
               </div>
@@ -1366,25 +1259,8 @@
           pagebreak: { mode: ['css', 'legacy'] } 
         };
 
-        // تم التعديل هنا: تحويل الـ PDF إلى Blob ثم مشاركته أو تنزيله كبديل
-        await html2pdf().set(opt).from(pdfPage).toPdf().get('pdf').then(async function (pdfObj) {
-          const pdfBlob = pdfObj.output('blob');
-          const fileForShare = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-          if (navigator.canShare && navigator.canShare({ files: [fileForShare] })) {
-            try {
-              await navigator.share({
-                title: 'تقرير ساحة الطيران',
-                text: 'مرفق تقرير ساحة الطيران بصيغة PDF.',
-                files: [fileForShare]
-              });
-            } catch (error) {
-              if (error.name !== 'AbortError') saveAs(pdfBlob, fileName);
-            }
-          } else {
-            saveAs(pdfBlob, fileName);
-          }
-        });
+        // تم التعديل هنا: حفظ الملف مباشرة بدلاً من استخدام blob والمشاركة غير المدعومة في بعض الأجهزة.
+        await html2pdf().set(opt).from(pdfPage).save();
 
       }catch(e){
         alert("حدث خطأ أثناء تصدير PDF: " + (e?.message || e));
@@ -1652,8 +1528,6 @@
 
       ['movement_staff','loading_staff','food_staff','maintenance_staff','catering_staff','sadkoub_staff']
         .forEach(cid => document.getElementById(cid).innerHTML='');
-
-      document.getElementById('previewBox').innerHTML = `<div class="text-center mini py-10">تم تفريغ النموذج — اضغط “إنشاء المعاينة”</div>`;
 
       addPerson('movement_staff'); addPerson('loading_staff'); addPerson('food_staff');
       addPerson('maintenance_staff'); addPerson('catering_staff'); addPerson('sadkoub_staff');
